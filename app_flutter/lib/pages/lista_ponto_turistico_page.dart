@@ -1,6 +1,8 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:gerenciador_pontos_turisticos/dao/ponto_turistico_dao.dart';
 import 'package:gerenciador_pontos_turisticos/pages/filtro_page.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../model/ponto_turistico.dart';
 import '../widgets/conteudo_form_dialog.dart';
 
@@ -16,6 +18,14 @@ class _ListaPontoTuristicoPageState extends State<ListaPontoTuristicoPage> {
 
   final pontosTuristicos = <PontoTuristico>[];
   int _ultimoId = 0;
+  final _dao = PontoTuristicoDao();
+  var _carregando = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _atualizarLista();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -58,23 +68,30 @@ class _ListaPontoTuristicoPageState extends State<ListaPontoTuristicoPage> {
               subtitle: Column(
                 children: [
                   Row(children: [
+                    Text(
+                        'Data de inclusão: ${pontoTuristico.dataInclusaoFormatada}')
+                  ]),
+                  Row(children: [
                     Text(pontoTuristico.data == null
-                        ? 'Sem data definida'
-                        : 'Data: ${pontoTuristico.dataFormatada}')
+                        ? 'Sem data do registro definida'
+                        : 'Data do registro: ${pontoTuristico.dataFormatada}')
                   ]),
                   Row(
+                    children: [Text('Detalhes: ${pontoTuristico.detalhes}')],
+                  ),
+                  Row(
                     children: [
-                      Text('Características: ${pontoTuristico.caracteristicas}')
+                      Text('Diferenciais: ${pontoTuristico.diferenciais}')
                     ],
-                  )
+                  ),
                 ],
               )),
           itemBuilder: (BuildContext context) => criarItensMenuPopup(),
           onSelected: (String valorSelecionado) {
             if (valorSelecionado == ACAO_EDITAR) {
-              _abrirForm(pontoTuristicoAtual: pontoTuristico, indice: index);
+              _abrirForm(pontoTuristicoAtual: pontoTuristico);
             } else {
-              _excluir(index);
+              _excluir(pontoTuristico);
             }
           },
         );
@@ -88,7 +105,7 @@ class _ListaPontoTuristicoPageState extends State<ListaPontoTuristicoPage> {
     final navigator = Navigator.of(context);
     navigator.pushNamed(FiltroPage.routeName).then((alterouValores) {
       if (alterouValores == true) {
-        ////
+        _atualizarLista();
       }
     });
   }
@@ -102,7 +119,7 @@ class _ListaPontoTuristicoPageState extends State<ListaPontoTuristicoPage> {
               Icon(Icons.edit, color: Colors.black),
               Padding(
                 padding: EdgeInsets.only(left: 10),
-                child: Text('Editar'),
+                child: Text('Editar ou visualizar'),
               )
             ],
           )),
@@ -120,7 +137,7 @@ class _ListaPontoTuristicoPageState extends State<ListaPontoTuristicoPage> {
     ];
   }
 
-  void _abrirForm({PontoTuristico? pontoTuristicoAtual, int? indice}) {
+  void _abrirForm({PontoTuristico? pontoTuristicoAtual}) {
     final key = GlobalKey<ConteudoFormDialogState>();
     showDialog(
         context: context,
@@ -137,30 +154,27 @@ class _ListaPontoTuristicoPageState extends State<ListaPontoTuristicoPage> {
                 child: Text('Cancelar'),
               ),
               TextButton(
-                onPressed: () {
-                  if (key.currentState != null &&
-                      key.currentState!.dadosValidados()) {
-                    setState(() {
-                      final novoPontoTuristico =
-                          key.currentState!.novoPontoTuristico;
-                      if (indice == null) {
-                        novoPontoTuristico.id = ++_ultimoId;
-                      } else {
-                        pontosTuristicos[indice] = novoPontoTuristico;
-                      }
-                      pontosTuristicos.add(novoPontoTuristico);
-                    });
-                    Navigator.of(context).pop();
-                  }
-                },
                 child: Text('Salvar'),
+                onPressed: () {
+                  if (key.currentState?.dadosValidados() != true) {
+                    return;
+                  }
+                  Navigator.of(context).pop();
+                  final novaTarefa = key.currentState!.novoPontoTuristico;
+                  _dao.salvar(novaTarefa).then((success) {
+                    if (success) {
+                      _atualizarLista();
+                    }
+                  });
+                  _atualizarLista();
+                },
               )
             ],
           );
         });
   }
 
-  void _excluir(int indice) {
+  void _excluir(PontoTuristico pontoTuristico) {
     showDialog(
         context: context,
         builder: (BuildContext context) {
@@ -185,13 +199,53 @@ class _ListaPontoTuristicoPageState extends State<ListaPontoTuristicoPage> {
               TextButton(
                   onPressed: () {
                     Navigator.of(context).pop();
-                    setState(() {
-                      pontosTuristicos.removeAt(indice);
+                    if (pontoTuristico.id == null) {
+                      return;
+                    }
+                    _dao.remover(pontoTuristico.id!).then((sucess) {
+                      if (sucess) _atualizarLista();
                     });
                   },
                   child: Text('OK'))
             ],
           );
         });
+  }
+
+  void _atualizarLista() async {
+    setState(() {
+      _carregando = true;
+    });
+
+    final prefs = await SharedPreferences.getInstance();
+    final campoOrdenacao = prefs.getString(FiltroPage.chaveCampoOrdenacao) ??
+        PontoTuristico.CAMPO_ID;
+    final usarOrdemDecrescente =
+        prefs.getBool(FiltroPage.chaveUsarOrdemDecrescente) == true;
+    final filtroDescricao =
+        prefs.getString(FiltroPage.chaveFiltroDescricao) ?? '';
+    final filtroDetalhes =
+        prefs.getString(FiltroPage.chaveFiltroDetalhes) ?? '';
+    final filtroDataInclusao =
+        prefs.getString(FiltroPage.chaveDataInclusao) ?? '';
+    final filtroDiferenciais =
+        prefs.getString(FiltroPage.chaveDiferenciais) ?? '';
+    final listaPontosTuristicos = await _dao.listar(
+      filtroDescricao: filtroDescricao,
+      filtroDetalhes: filtroDetalhes,
+      filtroDataInclusao: filtroDataInclusao,
+      filtroDiferenciais: filtroDiferenciais,
+      campoOrdenacao: campoOrdenacao,
+      usarOrdemDecrescente: usarOrdemDecrescente,
+    );
+    setState(() {
+      pontosTuristicos.clear();
+      if (listaPontosTuristicos.isNotEmpty) {
+        pontosTuristicos.addAll(listaPontosTuristicos);
+      }
+    });
+    setState(() {
+      _carregando = false;
+    });
   }
 }

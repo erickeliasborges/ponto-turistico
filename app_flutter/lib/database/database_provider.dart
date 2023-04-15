@@ -10,16 +10,11 @@ class DatabaseProvider {
 
   static final DatabaseProvider instance = DatabaseProvider._init();
 
-  Database? _databese;
+  Database? _database;
 
-  Future<Database> get databese async {
-    if (_databese == null){
-      _databese = await _initDatabase();
-    }
-    return _databese!;
-  }
+  Future<Database> get database async => _database ??= await _initDatabase();
 
-  Future<Database> _initDatabase() async{
+  Future<Database> _initDatabase() async {
     String dataBasePath = await getDatabasesPath();
     String dbPath = '$dataBasePath/$_dbName';
     return await openDatabase(
@@ -30,24 +25,30 @@ class DatabaseProvider {
     );
   }
 
-  Future<void> _onCreate (Database db, int version) async {
-     await db.execute('''
+  Future<void> _onCreate(Database db, int version) async {
+    await db.execute(getSQLCreateTable());
+  }
+
+  String getSQLCreateTable() {
+    return '''
       CREATE TABLE ${PontoTuristico.NOME_TABLE}(
       ${PontoTuristico.CAMPO_ID} INTEGER PRIMARY KEY AUTOINCREMENT,
       ${PontoTuristico.CAMPO_DESCRICAO} TEXT NOT NULL,
-      ${PontoTuristico.CAMPO_DATA} TEXT );
-      ${PontoTuristico.CAMPO_CARACTERISTICAS} TEXT );
-     ''');
+      ${PontoTuristico.CAMPO_DATA} TEXT,
+      ${PontoTuristico.CAMPO_DATA_INCLUSAO} TEXT,
+      ${PontoTuristico.CAMPO_DETALHES} TEXT,
+      ${PontoTuristico.CAMPO_DIFERENCIAIS} TEXT );
+     ''';
   }
 
-  Future<void> _onUpgrade (Database db, int oldVersion, int newVersion) async {
-
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    // db.execute("DROP TABLE ${PontoTuristico.NOME_TABLE};");
+    // db.execute(getSQLCreateTable());
   }
 
-  Future<void> close() async{
-    if(_databese != null){
-      await _databese!.close();
+  Future<void> close() async {
+    if (_database != null) {
+      await _database!.close();
     }
   }
-
 }
