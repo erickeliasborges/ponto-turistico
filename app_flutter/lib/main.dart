@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:gerenciador_pontos_turisticos/pages/filtro_page.dart';
 import 'package:gerenciador_pontos_turisticos/pages/lista_ponto_turistico_page.dart';
+import 'package:gerenciador_pontos_turisticos/pages/selecionar_localizacao_mapa_dialog.dart';
 
 void main() {
   runApp(const CadastroApp());
@@ -18,9 +19,10 @@ class CadastroApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blueGrey,
       ),
-      home: ListaPontoTuristicoPage(),
+      home: ListaPontoTuristicoPage(),    
       routes: {
         FiltroPage.routeName: (BuildContext context) => FiltroPage(),
+        SelecionarLocalizacaoMapaPage.routeName: (BuildContext context) => SelecionarLocalizacaoMapaPage(),
       },
     );
   }

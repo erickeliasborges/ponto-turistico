@@ -87,6 +87,8 @@ class PontoTuristicoDao {
         PontoTuristico.CAMPO_DATA_INCLUSAO,
         PontoTuristico.CAMPO_DETALHES,
         PontoTuristico.CAMPO_DIFERENCIAIS,
+        PontoTuristico.CAMPO_LATITUDE,
+        PontoTuristico.CAMPO_LONGITUDE,
       ],
       where: where,
       orderBy: orderBy,

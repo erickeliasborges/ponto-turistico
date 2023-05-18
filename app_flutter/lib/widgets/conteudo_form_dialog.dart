@@ -1,7 +1,10 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:intl/intl.dart';
+import 'package:maps_launcher/maps_launcher.dart';
 import '../model/ponto_turistico.dart';
+import 'package:gerenciador_pontos_turisticos/pages/selecionar_localizacao_mapa_dialog.dart';
 
 class ConteudoFormDialog extends StatefulWidget {
   final PontoTuristico? pontoTuristicoAtual;
@@ -19,6 +22,8 @@ class ConteudoFormDialogState extends State<ConteudoFormDialog> {
   final diferenciaisController = TextEditingController();
   final dataController = TextEditingController();
   final _dateFormat = DateFormat('dd/MM/yyy');
+  double latitude = 0;
+  double longitude = 0;
 
   @override
   void initState() {
@@ -28,6 +33,8 @@ class ConteudoFormDialogState extends State<ConteudoFormDialog> {
       detalhesController.text = widget.pontoTuristicoAtual!.detalhes;
       diferenciaisController.text = widget.pontoTuristicoAtual!.diferenciais;
       dataController.text = widget.pontoTuristicoAtual!.dataFormatada;
+      latitude = widget.pontoTuristicoAtual!.latitude;
+      longitude = widget.pontoTuristicoAtual!.longitude;
     }
   }
 
@@ -82,6 +89,10 @@ class ConteudoFormDialogState extends State<ConteudoFormDialog> {
                 return null;
               },
             ),
+            ElevatedButton( 
+                  onPressed: _abrirMapaParaSelecionarLocalizacao,
+                  child: Icon(Icons.map),
+              )
           ],
         ));
   }
@@ -114,9 +125,83 @@ class ConteudoFormDialogState extends State<ConteudoFormDialog> {
         data: dataController.text.isEmpty
             ? null
             : _dateFormat.parse(dataController.text),
+        // Ajustar para validar se já ta no banco, criar dataInclusaoController que nem o data, pois esse método é chamado quando altera também
         dataInclusao:
             _dateFormat.parse(DateFormat("dd/MM/yyyy").format(DateTime.now())),
         detalhes: detalhesController.text,
         diferenciais: diferenciaisController.text,
+        latitude: latitude,
+        longitude: longitude,
       );
+
+
+  void _abrirMapaExterno(){
+    // if(_localizacaoAtual == null){
+    //   return;
+    // }
+    // MapsLauncher.launchCoordinates(_localizacaoAtual!.latitude, _localizacaoAtual!.longitude);
+    double latitude = 1.0;
+    double longitude = 1.0;
+    MapsLauncher.launchCoordinates(latitude, longitude);
+    print(latitude);   
+  }    
+
+  Future<void> _abrirMapaParaSelecionarLocalizacao() async {
+    if (!await _validarPermissoes()) 
+      return;    
+    final position; 
+    if ((latitude == 0) && (longitude == 0)) 
+      position = await Geolocator.getCurrentPosition();
+    else
+      position = new LatLng(latitude, longitude);
+    LatLng posicaoAtual = LatLng(position.latitude, position.longitude);
+    final navigator = Navigator.of(context);
+    navigator.pushNamed(SelecionarLocalizacaoMapaPage.routeName, arguments: {'latLng': posicaoAtual}).then((localizacaoSelecionada) {
+        print(localizacaoSelecionada);
+        if (localizacaoSelecionada == null)
+          return;
+        LatLng? latLng = localizacaoSelecionada as LatLng?;
+        latitude = latLng!.latitude;
+        longitude = latLng.longitude;                
+    });
+  }
+
+  Future<bool> _validarPermissoes() async {
+    LocationPermission permissao = await Geolocator.checkPermission();
+    if (permissao == LocationPermission.denied) {
+      permissao = await Geolocator.requestPermission();
+      if (permissao == LocationPermission.denied) {
+        _mostrarMensagem('Não será possível utilizar o recurso '
+            'por falta de permissão');
+      }
+    }
+    if (permissao == LocationPermission.deniedForever) {
+      await _mostrarDialogMensagem(
+          'Para utilizar esse recurso, você deverá acessar '
+          'as configurações do app para permitir a utilização do serviço de localização');
+      Geolocator.openAppSettings();
+      return false;
+    }
+    return true;
+  }
+
+  void _mostrarMensagem(String mensagem) {
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(mensagem)));
+  }
+
+  Future<void> _mostrarDialogMensagem(String mensagem) async {
+    await showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text('Atenção'),
+        content: Text(mensagem),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.of(context).pop(), child: Text('OK'))
+        ],
+      ),
+    );
+  }
+    
 }
