@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:gerenciador_pontos_turisticos/services/localizacao.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:maps_launcher/maps_launcher.dart';
@@ -24,11 +25,14 @@ class ConteudoFormDialogState extends State<ConteudoFormDialog> {
   final _dateFormat = DateFormat('dd/MM/yyy');
   double latitude = 0;
   double longitude = 0;
+  bool incluindoPontoTuristico = true;
+  late Localizacao localizacao;
 
   @override
   void initState() {
     super.initState();
     if (widget.pontoTuristicoAtual != null) {
+      incluindoPontoTuristico = false;
       descricaoController.text = widget.pontoTuristicoAtual!.descricao;
       detalhesController.text = widget.pontoTuristicoAtual!.detalhes;
       diferenciaisController.text = widget.pontoTuristicoAtual!.diferenciais;
@@ -39,6 +43,7 @@ class ConteudoFormDialogState extends State<ConteudoFormDialog> {
   }
 
   Widget build(BuildContext context) {
+    localizacao = Localizacao(context);
     return Form(
         key: formKey,
         child: Column(
@@ -89,10 +94,13 @@ class ConteudoFormDialogState extends State<ConteudoFormDialog> {
                 return null;
               },
             ),
-            ElevatedButton( 
-                  onPressed: _abrirMapaParaSelecionarLocalizacao,
-                  child: Icon(Icons.map),
-              )
+            // ElevatedButton(
+            //   onPressed: _abrirMapaParaSelecionarLocalizacao,
+            //   child: Icon(Icons.map),
+            // )
+            TextButton(
+                onPressed: _abrirMapaParaSelecionarLocalizacao,
+                child: Text("Selecionar localização"))
           ],
         ));
   }
@@ -117,7 +125,39 @@ class ConteudoFormDialogState extends State<ConteudoFormDialog> {
     });
   }
 
-  bool dadosValidados() => formKey.currentState!.validate() == true;
+  bool dadosValidados() {
+    return (formKey.currentState!.validate() == true);
+  }
+
+  Future<void> confirmarLocalizacaoAtual() async {
+    await showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text('Atenção'),
+        content: Text('Confirma a localização do ponto turístico?'),
+        actions: [
+          TextButton(
+            child: Text('Não'),
+            onPressed: () async {
+              await _abrirMapaParaSelecionarLocalizacao();
+              Navigator.of(context).pop();
+            },
+          ),
+          TextButton(
+            child: Text('Sim'),
+            onPressed: () async {
+              if (incluindoPontoTuristico) {
+                final position = await localizacao.getLocalizacaoAtual();
+                latitude = position.latitude ?? 0;
+                longitude = position.longitude ?? 0;
+              }
+              Navigator.of(context).pop();
+            },
+          ),
+        ],
+      ),
+    );
+  }
 
   PontoTuristico get novoPontoTuristico => PontoTuristico(
         id: widget.pontoTuristicoAtual?.id ?? 0,
@@ -134,74 +174,23 @@ class ConteudoFormDialogState extends State<ConteudoFormDialog> {
         longitude: longitude,
       );
 
-
-  void _abrirMapaExterno(){
-    // if(_localizacaoAtual == null){
-    //   return;
-    // }
-    // MapsLauncher.launchCoordinates(_localizacaoAtual!.latitude, _localizacaoAtual!.longitude);
-    double latitude = 1.0;
-    double longitude = 1.0;
-    MapsLauncher.launchCoordinates(latitude, longitude);
-    print(latitude);   
-  }    
-
   Future<void> _abrirMapaParaSelecionarLocalizacao() async {
-    if (!await _validarPermissoes()) 
-      return;    
-    final position; 
-    if ((latitude == 0) && (longitude == 0)) 
+    if (!await localizacao.validarPermissoes()) return;
+    final position;
+    if ((latitude == 0) && (longitude == 0))
       position = await Geolocator.getCurrentPosition();
     else
       position = new LatLng(latitude, longitude);
-    LatLng posicaoAtual = LatLng(position.latitude, position.longitude);
+    LatLng posicao = LatLng(position.latitude, position.longitude);
     final navigator = Navigator.of(context);
-    navigator.pushNamed(SelecionarLocalizacaoMapaPage.routeName, arguments: {'latLng': posicaoAtual}).then((localizacaoSelecionada) {
-        print(localizacaoSelecionada);
-        if (localizacaoSelecionada == null)
-          return;
-        LatLng? latLng = localizacaoSelecionada as LatLng?;
-        latitude = latLng!.latitude;
-        longitude = latLng.longitude;                
+    await navigator.pushNamed(SelecionarLocalizacaoMapaPage.routeName,
+        arguments: {'latLng': posicao}).then((localizacaoSelecionada) {
+      print(localizacaoSelecionada);
+      if (localizacaoSelecionada == null) return;
+      LatLng? latLng = localizacaoSelecionada as LatLng?;
+      latitude = latLng!.latitude;
+      longitude = latLng.longitude;
     });
   }
 
-  Future<bool> _validarPermissoes() async {
-    LocationPermission permissao = await Geolocator.checkPermission();
-    if (permissao == LocationPermission.denied) {
-      permissao = await Geolocator.requestPermission();
-      if (permissao == LocationPermission.denied) {
-        _mostrarMensagem('Não será possível utilizar o recurso '
-            'por falta de permissão');
-      }
-    }
-    if (permissao == LocationPermission.deniedForever) {
-      await _mostrarDialogMensagem(
-          'Para utilizar esse recurso, você deverá acessar '
-          'as configurações do app para permitir a utilização do serviço de localização');
-      Geolocator.openAppSettings();
-      return false;
-    }
-    return true;
-  }
-
-  void _mostrarMensagem(String mensagem) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(mensagem)));
-  }
-
-  Future<void> _mostrarDialogMensagem(String mensagem) async {
-    await showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: Text('Atenção'),
-        content: Text(mensagem),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.of(context).pop(), child: Text('OK'))
-        ],
-      ),
-    );
-  }
-    
 }

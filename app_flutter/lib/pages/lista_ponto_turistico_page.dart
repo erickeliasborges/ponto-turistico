@@ -1,10 +1,14 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:geocoding/geocoding.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:gerenciador_pontos_turisticos/dao/ponto_turistico_dao.dart';
 import 'package:gerenciador_pontos_turisticos/pages/filtro_page.dart';
+import 'package:maps_launcher/maps_launcher.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../model/ponto_turistico.dart';
 import '../widgets/conteudo_form_dialog.dart';
+import 'package:gerenciador_pontos_turisticos/services/localizacao.dart';
 
 class ListaPontoTuristicoPage extends StatefulWidget {
   @override
@@ -20,6 +24,7 @@ class _ListaPontoTuristicoPageState extends State<ListaPontoTuristicoPage> {
   int _ultimoId = 0;
   final _dao = PontoTuristicoDao();
   var _carregando = false;
+  late Localizacao localizacao;
 
   @override
   void initState() {
@@ -29,6 +34,7 @@ class _ListaPontoTuristicoPageState extends State<ListaPontoTuristicoPage> {
 
   @override
   Widget build(BuildContext context) {
+    localizacao = Localizacao(context);
     return Scaffold(
       appBar: _criarAppBar(),
       body: _criarBody(),
@@ -84,6 +90,29 @@ class _ListaPontoTuristicoPageState extends State<ListaPontoTuristicoPage> {
                       Text('Diferenciais: ${pontoTuristico.diferenciais}')
                     ],
                   ),
+                  // FutureBuilder serve para retornar um Widget que usa uma função async,
+                  // no qual passa no future a funcção e utiliza o snaphot para pegar o retorno
+                  FutureBuilder(
+                    future: localizacao.getDescricaoLocalizacao(
+                        pontoTuristico.latitude, pontoTuristico.longitude),
+                    builder: (context, snapshot) => Row(
+                      children: [Text('Localização: ${snapshot.data ?? ''}')],
+                    ),
+                  ),
+                  FutureBuilder(
+                    future: localizacao.getDescricaoDistanciaPontoAteLocalAtual(
+                        pontoTuristico.latitude, pontoTuristico.longitude),
+                    builder: (context, snapshot) => Row(
+                      children: [
+                        Text(
+                            'Distância até o seu local: ${snapshot.data ?? ''}')
+                      ],
+                    ),
+                  ),
+                  TextButton(
+                      onPressed: () {
+                        MapsLauncher.launchCoordinates(pontoTuristico.latitude, pontoTuristico.longitude);
+                      }, child: Text('Visualizar no mapa'))
                 ],
               )),
           itemBuilder: (BuildContext context) => criarItensMenuPopup(),
@@ -155,10 +184,11 @@ class _ListaPontoTuristicoPageState extends State<ListaPontoTuristicoPage> {
               ),
               TextButton(
                 child: Text('Salvar'),
-                onPressed: () {
+                onPressed: () async {
                   if (key.currentState?.dadosValidados() != true) {
                     return;
                   }
+                  await key.currentState?.confirmarLocalizacaoAtual();
                   Navigator.of(context).pop();
                   final novaTarefa = key.currentState!.novoPontoTuristico;
                   _dao.salvar(novaTarefa).then((success) {

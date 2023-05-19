@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:geocoding/geocoding.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:gerenciador_pontos_turisticos/services/localizacao.dart';
 
 class SelecionarLocalizacaoMapaPage extends StatefulWidget {
   static const routeName = '/selecionar-localizacao-mapa';
@@ -16,9 +15,11 @@ class _SelecionarLocalizacaoMapaPageState
   LatLng posicaoCameraMapa = const LatLng(0, 0);
   GoogleMapController? googleMapController;
   String filtro = '';
+  late Localizacao localizacao;
 
   @override
   Widget build(BuildContext context) {
+    localizacao = Localizacao(context);
     final arguments = (ModalRoute.of(context)?.settings.arguments ??
         <String, dynamic>{}) as Map;
     LatLng latLngPassadaPorParametro = arguments['latLng'];
@@ -51,7 +52,10 @@ class _SelecionarLocalizacaoMapaPageState
               ),
             ),
             TextButton(
-                onPressed: () => filtrarLocalizacoes(filtro).then((value) {
+                onPressed: () =>
+                    localizacao.filtrarLocalizacoes(filtro).then((value) {
+                      if (value.isEmpty) return;
+
                       final filteredLocations = value;
                       localizacaoSelecionada = new LatLng(
                           filteredLocations.first.latitude,
@@ -103,20 +107,6 @@ class _SelecionarLocalizacaoMapaPageState
         ),
       );
 
-  Future<List<Location>> filtrarLocalizacoes(String filtro) async {
-    if (filtro.isEmpty) {
-      return [];
-    }
-
-    try {
-      final locations = await locationFromAddress(filtro);
-      return locations;
-    } catch (exception) {
-      print('Erro ao filtrar localizações: $exception');
-      return [];
-    }
-  }
-
   void atualizarPosicaoCameraMapa(LatLng targetPosition) async {
     if (googleMapController != null) {
       final novaPosicao = CameraPosition(target: targetPosition, zoom: 12.0);
@@ -125,56 +115,11 @@ class _SelecionarLocalizacaoMapaPageState
     }
   }
 
-  double calculateDistance(LatLng start, LatLng end) {
-    return Geolocator.distanceBetween(
-        start.latitude, start.longitude, end.latitude, end.longitude);
-  }
-
   Future<void> setPosicaoAtual() async {
-    if (!await _validarPermissoes()) return;
-    final position = await Geolocator.getCurrentPosition();
-    LatLng posicaoAtual = LatLng(position.latitude, position.longitude);
+    LatLng posicaoAtual = await localizacao.getLocalizacaoAtual();
     localizacaoSelecionada = posicaoAtual;
     posicaoCameraMapa = posicaoAtual;
     atualizarPosicaoCameraMapa(posicaoCameraMapa);
-  }
-
-  Future<bool> _validarPermissoes() async {
-    LocationPermission permissao = await Geolocator.checkPermission();
-    if (permissao == LocationPermission.denied) {
-      permissao = await Geolocator.requestPermission();
-      if (permissao == LocationPermission.denied) {
-        _mostrarMensagem('Não será possível utilizar o recurso '
-            'por falta de permissão');
-      }
-    }
-    if (permissao == LocationPermission.deniedForever) {
-      await _mostrarDialogMensagem(
-          'Para utilizar esse recurso, você deverá acessar '
-          'as configurações do app para permitir a utilização do serviço de localização');
-      Geolocator.openAppSettings();
-      return false;
-    }
-    return true;
-  }
-
-  void _mostrarMensagem(String mensagem) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(mensagem)));
-  }
-
-  Future<void> _mostrarDialogMensagem(String mensagem) async {
-    await showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: Text('Atenção'),
-        content: Text(mensagem),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.of(context).pop(), child: Text('OK'))
-        ],
-      ),
-    );
   }
 
   Future<bool> _onVoltarClick() async {

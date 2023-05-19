@@ -37,7 +37,9 @@ class DatabaseProvider {
       ${PontoTuristico.CAMPO_DATA} TEXT,
       ${PontoTuristico.CAMPO_DATA_INCLUSAO} TEXT,
       ${PontoTuristico.CAMPO_DETALHES} TEXT,
-      ${PontoTuristico.CAMPO_DIFERENCIAIS} TEXT);
+      ${PontoTuristico.CAMPO_DIFERENCIAIS} TEXT,
+      ${PontoTuristico.CAMPO_LATITUDE} DECIMAL(9,6),
+      ${PontoTuristico.CAMPO_LONGITUDE} DECIMAL(9,6));
      ''';
   }
 
@@ -45,8 +47,8 @@ class DatabaseProvider {
     if (oldVersion == newVersion)
       return;
 
-    db.execute("ALTER TABLE ${PontoTuristico.NOME_TABLE} ADD COLUMN ${PontoTuristico.CAMPO_LATITUDE} DECIMAL(9,6);");  
-    db.execute("ALTER TABLE ${PontoTuristico.NOME_TABLE} ADD COLUMN ${PontoTuristico.CAMPO_LONGITUDE} DECIMAL(9,6);");  
+    // db.execute("ALTER TABLE ${PontoTuristico.NOME_TABLE} ADD COLUMN ${PontoTuristico.CAMPO_LATITUDE} DECIMAL(9,6);");  
+    // db.execute("ALTER TABLE ${PontoTuristico.NOME_TABLE} ADD COLUMN ${PontoTuristico.CAMPO_LONGITUDE} DECIMAL(9,6);");  
   }
 
   Future<void> close() async {
