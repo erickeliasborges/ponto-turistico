@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:gerenciador_pontos_turisticos/services/mensagem.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:intl/intl.dart';
 
 class Localizacao {
   final BuildContext context;
+  late final Mensagem mensagem;
 
-  Localizacao(this.context);
+  Localizacao(this.context) {
+    mensagem = Mensagem(context);
+  }
 
   Future<LatLng> getLocalizacaoAtual() async {
     if (!await validarPermissoes()) return LatLng(0, 0);
@@ -20,37 +24,20 @@ class Localizacao {
     if (permissao == LocationPermission.denied) {
       permissao = await Geolocator.requestPermission();
       if (permissao == LocationPermission.denied) {
-        _mostrarMensagem('Não será possível utilizar o recurso '
+        mensagem.mostrarMensagem('Não será possível utilizar o recurso '
             'por falta de permissão');
       }
     }
     if (permissao == LocationPermission.deniedForever) {
-      await _mostrarDialogMensagem(
+      await mensagem.mostrarDialogMensagem(
           'Para utilizar esse recurso, você deverá acessar '
-          'as configurações do app para permitir a utilização do serviço de localização');
+          'as configurações do app para permitir a utilização do serviço de localização',
+          TextButton(
+              onPressed: () => Navigator.of(context).pop(), child: Text('OK')));
       Geolocator.openAppSettings();
       return false;
     }
     return true;
-  }
-
-  void _mostrarMensagem(String mensagem) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(mensagem)));
-  }
-
-  Future<void> _mostrarDialogMensagem(String mensagem) async {
-    await showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: Text('Atenção'),
-        content: Text(mensagem),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.of(context).pop(), child: Text('OK'))
-        ],
-      ),
-    );
   }
 
   Future<String> getDescricaoLocalizacao(

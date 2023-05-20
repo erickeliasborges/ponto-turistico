@@ -1,4 +1,3 @@
-import 'package:flutter/cupertino.dart';
 import 'package:gerenciador_pontos_turisticos/model/ponto_turistico.dart';
 import 'package:sqflite/sqflite.dart';
 
@@ -43,12 +42,17 @@ class DatabaseProvider {
      ''';
   }
 
-  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {    
-    if (oldVersion == newVersion)
-      return;
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    switch (newVersion) {
+      case 2: criarColunasLocalizacao(db);
+    }
+  }
 
-    // db.execute("ALTER TABLE ${PontoTuristico.NOME_TABLE} ADD COLUMN ${PontoTuristico.CAMPO_LATITUDE} DECIMAL(9,6);");  
-    // db.execute("ALTER TABLE ${PontoTuristico.NOME_TABLE} ADD COLUMN ${PontoTuristico.CAMPO_LONGITUDE} DECIMAL(9,6);");  
+  void criarColunasLocalizacao(Database db) {
+    db.execute(
+        "ALTER TABLE ${PontoTuristico.NOME_TABLE} ADD COLUMN ${PontoTuristico.CAMPO_LATITUDE} DECIMAL(9,6);");
+    db.execute(
+        "ALTER TABLE ${PontoTuristico.NOME_TABLE} ADD COLUMN ${PontoTuristico.CAMPO_LONGITUDE} DECIMAL(9,6);");
   }
 
   Future<void> close() async {
