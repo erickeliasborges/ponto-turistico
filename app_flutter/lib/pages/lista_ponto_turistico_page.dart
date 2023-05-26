@@ -1,7 +1,4 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:geocoding/geocoding.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:gerenciador_pontos_turisticos/dao/ponto_turistico_dao.dart';
 import 'package:gerenciador_pontos_turisticos/pages/filtro_page.dart';
 import 'package:maps_launcher/maps_launcher.dart';
@@ -83,11 +80,16 @@ class _ListaPontoTuristicoPageState extends State<ListaPontoTuristicoPage> {
                         : 'Data do registro: ${pontoTuristico.dataFormatada}')
                   ]),
                   Row(
-                    children: [Text('Detalhes: ${pontoTuristico.detalhes}')],
+                    children: [
+                      Flexible(
+                          child: Text('Detalhes: ${pontoTuristico.detalhes}'))
+                    ],
                   ),
                   Row(
                     children: [
-                      Text('Diferenciais: ${pontoTuristico.diferenciais}')
+                      Flexible(
+                          child: Text(
+                              'Diferenciais: ${pontoTuristico.diferenciais}'))
                     ],
                   ),
                   // FutureBuilder serve para retornar um Widget que usa uma função async,
@@ -96,7 +98,10 @@ class _ListaPontoTuristicoPageState extends State<ListaPontoTuristicoPage> {
                     future: localizacao.getDescricaoLocalizacao(
                         pontoTuristico.latitude, pontoTuristico.longitude),
                     builder: (context, snapshot) => Row(
-                      children: [Text('Localização: ${snapshot.data ?? ''}')],
+                      children: [
+                        Flexible(
+                            child: Text('Localização: ${snapshot.data ?? ''}'))
+                      ],
                     ),
                   ),
                   FutureBuilder(
@@ -104,15 +109,18 @@ class _ListaPontoTuristicoPageState extends State<ListaPontoTuristicoPage> {
                         pontoTuristico.latitude, pontoTuristico.longitude),
                     builder: (context, snapshot) => Row(
                       children: [
-                        Text(
-                            'Distância até o seu local: ${snapshot.data ?? ''}')
+                        Flexible(
+                            child: Text(
+                                'Distância até o seu local: ${snapshot.data ?? ''}'))
                       ],
                     ),
                   ),
                   TextButton(
                       onPressed: () {
-                        MapsLauncher.launchCoordinates(pontoTuristico.latitude, pontoTuristico.longitude);
-                      }, child: Text('Visualizar no mapa'))
+                        MapsLauncher.launchCoordinates(
+                            pontoTuristico.latitude, pontoTuristico.longitude);
+                      },
+                      child: Text('Visualizar no mapa'))
                 ],
               )),
           itemBuilder: (BuildContext context) => criarItensMenuPopup(),

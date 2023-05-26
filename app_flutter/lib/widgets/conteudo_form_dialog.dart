@@ -23,86 +23,110 @@ class ConteudoFormDialogState extends State<ConteudoFormDialog> {
   final diferenciaisController = TextEditingController();
   final dataController = TextEditingController();
   final _dateFormat = DateFormat('dd/MM/yyy');
+  final localizacaoController = TextEditingController();
+  final distanciaAteLocalController = TextEditingController();
   double latitude = 0;
   double longitude = 0;
-  bool incluindoPontoTuristico = true;
   late Localizacao localizacao;
 
   @override
   void initState() {
     super.initState();
-    if (widget.pontoTuristicoAtual != null) {
-      incluindoPontoTuristico = false;
+    if (alterandoRegistro()) {
       descricaoController.text = widget.pontoTuristicoAtual!.descricao;
       detalhesController.text = widget.pontoTuristicoAtual!.detalhes;
       diferenciaisController.text = widget.pontoTuristicoAtual!.diferenciais;
       dataController.text = widget.pontoTuristicoAtual!.dataFormatada;
-      latitude = widget.pontoTuristicoAtual!.latitude;
-      longitude = widget.pontoTuristicoAtual!.longitude;
+    } else {
+      dataController.text = DateFormat('dd/MM/yyyy').format(DateTime.now());
     }
+  }
+
+  bool alterandoRegistro() {
+    return (widget.pontoTuristicoAtual != null);
   }
 
   Widget build(BuildContext context) {
     localizacao = Localizacao(context);
-    return Form(
-        key: formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextFormField(
-              controller: descricaoController,
-              decoration: InputDecoration(labelText: 'Descrição'),
-              validator: (String? valor) {
-                if (valor == null || valor.isEmpty) {
-                  return 'Informe a descrição';
-                }
-                return null;
-              },
-            ),
-            TextFormField(
-              controller: dataController,
-              decoration: InputDecoration(
-                labelText: 'Data',
-                prefixIcon: IconButton(
-                  onPressed: _mostraCalendario,
-                  icon: Icon(Icons.calendar_today),
+    if (alterandoRegistro()) {
+      _setLatitudeLongitude(LatLng(widget.pontoTuristicoAtual!.latitude,
+          widget.pontoTuristicoAtual!.longitude));
+    } else {
+      localizacao.getLocalizacaoAtual().then((value) =>
+          _setLatitudeLongitude(LatLng(value.latitude, value.longitude)));
+    }
+
+    return SingleChildScrollView(
+        child: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: dataController,
+                  decoration: InputDecoration(
+                    labelText: 'Data',
+                    prefixIcon: IconButton(
+                      onPressed: _mostraCalendario,
+                      icon: Icon(Icons.calendar_today),
+                    ),
+                    suffixIcon: IconButton(
+                      onPressed: () => dataController.clear(),
+                      icon: Icon(Icons.close),
+                    ),
+                  ),
+                  readOnly: true,
                 ),
-                suffixIcon: IconButton(
-                  onPressed: () => dataController.clear(),
-                  icon: Icon(Icons.close),
+                TextFormField(
+                  controller: descricaoController,
+                  decoration: InputDecoration(labelText: 'Descrição'),
+                  validator: (String? valor) {
+                    if (valor == null || valor.isEmpty) {
+                      return 'Informe a descrição';
+                    }
+                    return null;
+                  },
+                ),                
+                TextFormField(
+                  controller: detalhesController,
+                  decoration: InputDecoration(labelText: 'Detalhes'),
+                  validator: (String? valor) {
+                    if (valor == null || valor.isEmpty) {
+                      return 'Informe as Detalhes';
+                    }
+                    return null;
+                  },
                 ),
-              ),
-              readOnly: true,
-            ),
-            TextFormField(
-              controller: detalhesController,
-              decoration: InputDecoration(labelText: 'Detalhes'),
-              validator: (String? valor) {
-                if (valor == null || valor.isEmpty) {
-                  return 'Informe as Detalhes';
-                }
-                return null;
-              },
-            ),
-            TextFormField(
-              controller: diferenciaisController,
-              decoration: InputDecoration(labelText: 'Diferenciais'),
-              validator: (String? valor) {
-                if (valor == null || valor.isEmpty) {
-                  return 'Informe os diferenciais';
-                }
-                return null;
-              },
-            ),
-            // ElevatedButton(
-            //   onPressed: _abrirMapaParaSelecionarLocalizacao,
-            //   child: Icon(Icons.map),
-            // )
-            TextButton(
-                onPressed: _abrirMapaParaSelecionarLocalizacao,
-                child: Text("Selecionar localização"))
-          ],
-        ));
+                TextFormField(
+                  controller: diferenciaisController,
+                  decoration: InputDecoration(labelText: 'Diferenciais'),
+                  validator: (String? valor) {
+                    if (valor == null || valor.isEmpty) {
+                      return 'Informe os diferenciais';
+                    }
+                    return null;
+                  },
+                ),
+                TextFormField(
+                  controller: localizacaoController,
+                  decoration: InputDecoration(labelText: 'Localização'),
+                  readOnly: true,
+                ),
+                TextFormField(
+                  controller: distanciaAteLocalController,
+                  decoration:
+                      InputDecoration(labelText: 'Distância até o seu local'),
+                  readOnly: true,
+                ),
+                // ElevatedButton(
+                //   onPressed: _abrirMapaParaSelecionarLocalizacao,
+                //   child: Icon(Icons.map),
+                // )
+                TextButton(
+                    onPressed: _abrirMapaParaSelecionarLocalizacao,
+                    child: Text("Selecionar localização"))
+              ],
+            )));
   }
 
   void _mostraCalendario() {
@@ -146,10 +170,10 @@ class ConteudoFormDialogState extends State<ConteudoFormDialog> {
           TextButton(
             child: Text('Sim'),
             onPressed: () async {
-              if (incluindoPontoTuristico) {
+              if (latitude == 0 || longitude == 0) {
                 final position = await localizacao.getLocalizacaoAtual();
-                latitude = position.latitude ?? 0;
-                longitude = position.longitude ?? 0;
+                _setLatitudeLongitude(
+                    LatLng(position.latitude, position.longitude));
               }
               Navigator.of(context).pop();
             },
@@ -188,9 +212,16 @@ class ConteudoFormDialogState extends State<ConteudoFormDialog> {
       print(localizacaoSelecionada);
       if (localizacaoSelecionada == null) return;
       LatLng? latLng = localizacaoSelecionada as LatLng?;
-      latitude = latLng!.latitude;
-      longitude = latLng.longitude;
+      _setLatitudeLongitude(latLng!);
     });
   }
 
+  void _setLatitudeLongitude(LatLng latLng) async {
+    latitude = latLng.latitude;
+    longitude = latLng.longitude;
+    localizacaoController.text =
+        await localizacao.getDescricaoLocalizacao(latitude, longitude);
+    distanciaAteLocalController.text = await localizacao
+        .getDescricaoDistanciaPontoAteLocalAtual(latitude, longitude);
+  }
 }

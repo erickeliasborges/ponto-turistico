@@ -2,7 +2,7 @@
     package="com.example.app_flutter">
    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
    <application           
-        android:label="app_flutter"
+        android:label="Pontos turísticos"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <!-- Add your Google Maps API Key here -->

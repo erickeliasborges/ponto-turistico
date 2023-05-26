@@ -42,8 +42,11 @@ class Localizacao {
 
   Future<String> getDescricaoLocalizacao(
       double latitude, double longitude) async {
+    if ((latitude == 0) || (longitude == 0)) return 'Não informado';
+
     List<Placemark> placeMarkList =
         await placemarkFromCoordinates(latitude, longitude);
+    
     if (placeMarkList.isEmpty) return 'Não informado';
 
     return '${placeMarkList[0].street}, ${placeMarkList[0].country}' ?? '';
@@ -57,7 +60,7 @@ class Localizacao {
     double distanciaMetros =
         calcularDistanciaLocalizacoes(LatLng(latitude, longitude), latLngAtual);
 
-    return distanciaMetros > 0 ? formatarDistancia(distanciaMetros) : '';
+    return formatarDistancia(distanciaMetros);
   }
 
   double calcularDistanciaLocalizacoes(LatLng start, LatLng end) {
