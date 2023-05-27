@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:gerenciador_pontos_turisticos/dao/ponto_turistico_dao.dart';
 import 'package:gerenciador_pontos_turisticos/pages/filtro_page.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:maps_launcher/maps_launcher.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../model/ponto_turistico.dart';
@@ -268,6 +269,12 @@ class _ListaPontoTuristicoPageState extends State<ListaPontoTuristicoPage> {
         prefs.getString(FiltroPage.chaveDataInclusao) ?? '';
     final filtroDiferenciais =
         prefs.getString(FiltroPage.chaveDiferenciais) ?? '';
+    double pontosProximosMetros =
+        prefs.getDouble(FiltroPage.chavePontosProximosMetros) ?? 0;
+    LatLng latLngAtual = LatLng(0, 0);
+    if (pontosProximosMetros > 0) {
+      latLngAtual = await localizacao.getLocalizacaoAtual();
+    }
     final listaPontosTuristicos = await _dao.listar(
       filtroDescricao: filtroDescricao,
       filtroDetalhes: filtroDetalhes,
@@ -275,6 +282,9 @@ class _ListaPontoTuristicoPageState extends State<ListaPontoTuristicoPage> {
       filtroDiferenciais: filtroDiferenciais,
       campoOrdenacao: campoOrdenacao,
       usarOrdemDecrescente: usarOrdemDecrescente,
+      latitude: latLngAtual.latitude,
+      longitude: latLngAtual.longitude,
+      pontosProximosMetros: pontosProximosMetros,
     );
     setState(() {
       pontosTuristicos.clear();

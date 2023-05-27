@@ -1,4 +1,7 @@
+import 'dart:ffi';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 import '../model/ponto_turistico.dart';
@@ -11,6 +14,7 @@ class FiltroPage extends StatefulWidget {
   static const chaveFiltroDetalhes = 'filtroDetalhes';
   static const chaveDataInclusao = 'filtroDataInclusao';
   static const chaveDiferenciais = 'filtroDiferenciais';
+  static const chavePontosProximosMetros = 'filtroPontosProximosMetros';
 
   @override
   _FiltroPageState createState() => _FiltroPageState();
@@ -31,6 +35,7 @@ class _FiltroPageState extends State<FiltroPage> {
   final _detalhesController = TextEditingController();
   final _dataInclusaoController = TextEditingController();
   final _diferenciaisController = TextEditingController();
+  final _pontosProximosMetrosController = TextEditingController();
   String _campoOrdenacao = PontoTuristico.CAMPO_ID;
   bool _usarOrdemDecrescente = false;
   bool _alterouValores = false;
@@ -56,6 +61,13 @@ class _FiltroPageState extends State<FiltroPage> {
           _prefs.getString(FiltroPage.chaveDataInclusao) ?? '';
       _diferenciaisController.text =
           _prefs.getString(FiltroPage.chaveDiferenciais) ?? '';
+      _pontosProximosMetrosController.text =
+          (_prefs.getDouble(FiltroPage.chavePontosProximosMetros) == 0
+                  ? ''
+                  : _prefs
+                      .getDouble(FiltroPage.chavePontosProximosMetros)
+                      .toString())
+              .toString();
     });
   }
 
@@ -121,6 +133,21 @@ class _FiltroPageState extends State<FiltroPage> {
               ),
               readOnly: true,
               onChanged: _onDataInclusaoChanged,
+            ),
+          ),
+          Divider(),
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 10),
+            child: TextField(
+              keyboardType: TextInputType.number,
+              inputFormatters: <TextInputFormatter>[
+                FilteringTextInputFormatter.allow(RegExp('[0-9,.]'))
+              ],
+              decoration: InputDecoration(
+                labelText: 'Pontos próximos em metros',
+              ),
+              controller: _pontosProximosMetrosController,
+              onChanged: _onPontosProximosMetrosChanged,
             ),
           ),
           Divider(),
@@ -215,6 +242,12 @@ class _FiltroPageState extends State<FiltroPage> {
 
   void _onDataInclusaoChanged(String? valor) {
     _prefs.setString(FiltroPage.chaveDataInclusao, valor ?? '');
+    _alterouValores = true;
+  }
+
+  void _onPontosProximosMetrosChanged(String? valor) {
+    double? doubleValue = double.tryParse(valor!) ?? 0;
+    _prefs.setDouble(FiltroPage.chavePontosProximosMetros, doubleValue);
     _alterouValores = true;
   }
 

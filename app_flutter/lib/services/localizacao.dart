@@ -46,7 +46,7 @@ class Localizacao {
 
     List<Placemark> placeMarkList =
         await placemarkFromCoordinates(latitude, longitude);
-    
+
     if (placeMarkList.isEmpty) return 'Não informado';
 
     return '${placeMarkList[0].street}, ${placeMarkList[0].country}' ?? '';

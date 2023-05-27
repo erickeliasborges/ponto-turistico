@@ -1,3 +1,4 @@
+import 'package:geolocator/geolocator.dart';
 import 'package:sqflite/sqflite.dart';
 
 import '../database/database_provider.dart';
@@ -50,7 +51,10 @@ class PontoTuristicoDao {
       String filtroDataInclusao = '',
       String filtroDiferenciais = '',
       String campoOrdenacao = PontoTuristico.CAMPO_ID,
-      bool usarOrdemDecrescente = false}) async {
+      bool usarOrdemDecrescente = false,
+      double latitude = 0,
+      double longitude = 0,
+      double pontosProximosMetros = 0}) async {
     String? where = "(1 = 1)";
 
     if (filtroDescricao.isNotEmpty && filtroDescricao != "") {
@@ -91,6 +95,18 @@ class PontoTuristicoDao {
       where: where,
       orderBy: orderBy,
     );
-    return resultado.map((m) => PontoTuristico.fromMap(m)).toList();
+    List<PontoTuristico> pontosTuristicos = List.empty(growable: true);
+
+    resultado.forEach((m) {
+      PontoTuristico pontoTuristico = PontoTuristico.fromMap(m);
+      if ((latitude == 0 || longitude == 0 || pontosProximosMetros == 0) ||
+          (Geolocator.distanceBetween(latitude, longitude,
+                  pontoTuristico.latitude, pontoTuristico.longitude) <=
+              pontosProximosMetros)) {
+        pontosTuristicos.add(pontoTuristico);
+      }
+    });
+
+    return pontosTuristicos;
   }
 }
