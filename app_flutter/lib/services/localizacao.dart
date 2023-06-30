@@ -56,10 +56,9 @@ class Localizacao {
       double latitude, double longitude) async {
     if ((latitude == 0) || (longitude == 0)) return '';
 
-    LatLng latLngAtual = await getLocalizacaoAtual();
+    LatLng latLngAtual = await getLocalizacaoAtual();    
     double distanciaMetros =
         calcularDistanciaLocalizacoes(LatLng(latitude, longitude), latLngAtual);
-
     return formatarDistancia(distanciaMetros);
   }
 

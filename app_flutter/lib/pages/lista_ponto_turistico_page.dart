@@ -94,7 +94,7 @@ class _ListaPontoTuristicoPageState extends State<ListaPontoTuristicoPage> {
                     ],
                   ),
                   // FutureBuilder serve para retornar um Widget que usa uma função async,
-                  // no qual passa no future a funcção e utiliza o snaphot para pegar o retorno
+                  // no qual passa no future a função e utiliza o snaphot para pegar o retorno
                   FutureBuilder(
                     future: localizacao.getDescricaoLocalizacao(
                         pontoTuristico.latitude, pontoTuristico.longitude),

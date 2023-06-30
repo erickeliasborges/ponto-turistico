@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:gerenciador_pontos_turisticos/model/cep.dart';
+import 'package:gerenciador_pontos_turisticos/services/cep_service.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:gerenciador_pontos_turisticos/services/localizacao.dart';
+import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
 
 class SelecionarLocalizacaoMapaPage extends StatefulWidget {
   static const routeName = '/selecionar-localizacao-mapa';
@@ -14,8 +17,17 @@ class _SelecionarLocalizacaoMapaPageState
   LatLng localizacaoSelecionada = const LatLng(0, 0);
   LatLng posicaoCameraMapa = const LatLng(0, 0);
   GoogleMapController? googleMapController;
-  String filtro = '';
+  Set<Marker> markers = {};
+  final filtroController = TextEditingController();
   late Localizacao localizacao;
+
+  final cepService = CepService();
+  final cepController = TextEditingController();
+  final cepKey = GlobalKey<FormState>();
+  final cepFormater = MaskTextInputFormatter(
+      mask: '#####-###', filter: {'#': RegExp(r'[0-9]')});
+  var loading = false;
+  Cep? cep;
 
   @override
   Widget build(BuildContext context) {
@@ -31,87 +43,137 @@ class _SelecionarLocalizacaoMapaPageState
       posicaoCameraMapa = latLngPassadaPorParametro;
     }
 
+    updateMarker();
     return _criarBody();
   }
 
-  Widget _criarBody() => Scaffold(
-        appBar: AppBar(
-          title: Text('Selecione a localização'),
-        ),
-        body: Column(
-          children: [
-            TextField(
-              onChanged: (value) {
-                setState(() {
-                  filtro = value;
-                });
-              },
-              decoration: InputDecoration(
-                labelText: 'Filtro',
-                prefixIcon: Icon(Icons.search),
-              ),
-            ),
-            TextButton(
-                onPressed: () =>
-                    localizacao.filtrarLocalizacoes(filtro).then((value) {
-                      if (value.isEmpty) return;
+  void updateMarker() {
+    if (localizacaoSelecionada == null) return;
 
-                      final filteredLocations = value;
-                      localizacaoSelecionada = new LatLng(
-                          filteredLocations.first.latitude,
-                          filteredLocations.first.longitude);
-                      ;
-                      posicaoCameraMapa = localizacaoSelecionada;
-                      atualizarPosicaoCameraMapa(posicaoCameraMapa);
-                    }),
-                child: Text('Pesquisar')),
-            Expanded(
-              child: GoogleMap(
-                onMapCreated: (controller) {
-                  googleMapController = controller;
-                  atualizarPosicaoCameraMapa(posicaoCameraMapa);
-                },
-                onTap: (LatLng latLng) {
-                  setState(() {
-                    localizacaoSelecionada = latLng;
-                  });
-                },
-                markers: Set<Marker>.from([
-                  if (localizacaoSelecionada != null)
-                    Marker(
-                      markerId: MarkerId('Localização selecionada'),
-                      position: localizacaoSelecionada,
-                    ),
-                ]),
-                initialCameraPosition: CameraPosition(
-                  target: posicaoCameraMapa,
-                  zoom: 12.0,
-                ),
-                myLocationButtonEnabled: true,
-                myLocationEnabled: true,
-              ),
-            ),
-          ],
-        ),
-        floatingActionButton: FloatingActionButton(
-          onPressed: () {
-            if (localizacaoSelecionada != null) {
-              print(
-                  'Localização selecionada: ${localizacaoSelecionada.latitude}, ${localizacaoSelecionada.longitude}');
-            } else {
-              print('Nenhuma localização selecionada');
-            }
-            _onVoltarClick();
-          },
-          child: Icon(Icons.check),
+    setState(() {
+      markers.clear();
+      markers.add(
+        Marker(
+          markerId: MarkerId('Localização selecionada'),
+          position: localizacaoSelecionada,
         ),
       );
+    });
+  }
+
+  Widget _criarBody() => Scaffold(
+      appBar: AppBar(
+        title: Text('Selecione a localização'),
+      ),
+      body: Column(
+        children: [
+          Form(
+            key: cepKey,
+            child: TextFormField(
+              controller: cepController,
+              decoration: InputDecoration(
+                labelText: 'CEP',
+                hintText: 'Filtre pelo CEP...',
+                suffixIcon: loading
+                    ? const Padding(
+                        padding: EdgeInsets.all(10),
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : IconButton(
+                        onPressed: () {
+                          _findCep().then((value) {
+                            if (cep != null) {
+                              filtroController.text =
+                                  '${cep!.localidade!}, ${cep!.bairro!}, ${cep!.logradouro!}';
+                              filtrarLocalizacaoMapa();
+                            }
+                          });
+                        },
+                        icon: const Icon(Icons.search),
+                      ),
+              ),
+              inputFormatters: [cepFormater],
+              validator: (String? value) {
+                if (value == null || value.isEmpty || !cepFormater.isFill()) {
+                  return 'Informe um cep válido!';
+                }
+                return null;
+              },
+            ),
+          ),
+          TextField(
+            controller: filtroController,
+            decoration: InputDecoration(
+              labelText: 'Endereço',
+              hintText: 'Filtre por alguma informação do endereço...',
+              suffixIcon: loading
+                  ? const Padding(
+                      padding: EdgeInsets.all(10),
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : IconButton(
+                      onPressed: filtrarLocalizacaoMapa,
+                      icon: const Icon(Icons.search),
+                    ),
+            ),
+          ),
+          Expanded(
+            child: GoogleMap(
+              onMapCreated: (controller) {
+                googleMapController = controller;
+                atualizarPosicaoCameraMapa(posicaoCameraMapa);
+              },
+              onTap: (LatLng latLng) {
+                setState(() {
+                  localizacaoSelecionada = latLng;
+                });
+                updateMarker();
+              },
+              markers: markers,
+              initialCameraPosition: CameraPosition(
+                target: posicaoCameraMapa,
+                zoom: 12.0,
+              ),
+              myLocationButtonEnabled: false,
+              myLocationEnabled: false,
+            ),
+          ),
+        ],
+      ),
+      floatingActionButton: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          FloatingActionButton(            
+            tooltip: 'Marcar localização atual no mapa.',
+            onPressed: () {
+              setPosicaoAtual();
+            },
+            child: Icon(Icons.my_location),
+          ),
+          SizedBox(width: 5.0),
+          FloatingActionButton(            
+            tooltip: 'Selecionar localização.',
+            onPressed: () {
+              if (localizacaoSelecionada != null) {
+                print(
+                    'Localização selecionada: ${localizacaoSelecionada.latitude}, ${localizacaoSelecionada.longitude}');
+              } else {
+                print('Nenhuma localização selecionada');
+              }
+              _onVoltarClick();
+            },
+            child: Icon(Icons.check),
+          ),
+          SizedBox(width: 40.0),
+        ],
+      ));
 
   void atualizarPosicaoCameraMapa(LatLng targetPosition) async {
     if (googleMapController != null) {
       final novaPosicao = CameraPosition(target: targetPosition, zoom: 12.0);
       await googleMapController!
           .animateCamera(CameraUpdate.newCameraPosition(novaPosicao));
+      updateMarker();
     }
   }
 
@@ -125,5 +187,39 @@ class _SelecionarLocalizacaoMapaPageState
   Future<bool> _onVoltarClick() async {
     Navigator.pop(context, localizacaoSelecionada);
     return true;
+  }
+
+  void filtrarLocalizacaoMapa() {
+    if (filtroController.text.isEmpty) return;
+
+    localizacao.filtrarLocalizacoes(filtroController.text).then((value) {
+      if (value.isEmpty) return;
+
+      final filteredLocations = value;
+      localizacaoSelecionada = new LatLng(
+          filteredLocations.first.latitude, filteredLocations.first.longitude);
+      posicaoCameraMapa = localizacaoSelecionada;
+      atualizarPosicaoCameraMapa(posicaoCameraMapa);
+    });
+  }
+
+  Future<void> _findCep() async {
+    if (cepKey.currentState == null || !cepKey.currentState!.validate()) {
+      return;
+    }
+    setState(() {
+      loading = true;
+    });
+    try {
+      cep = await cepService.findCepAsObject(cepFormater.getUnmaskedText());
+    } catch (e) {
+      debugPrint(e.toString());
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Ocorreu um erro, tente noavamente! \n'
+              'ERRO: ${e.toString()}')));
+    }
+    setState(() {
+      loading = false;
+    });
   }
 }
