@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:gerenciador_pontos_turisticos/model/cep.dart';
 import 'package:gerenciador_pontos_turisticos/services/cep_service.dart';
+import 'package:gerenciador_pontos_turisticos/services/mensagem.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:gerenciador_pontos_turisticos/services/localizacao.dart';
 import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
@@ -20,6 +21,7 @@ class _SelecionarLocalizacaoMapaPageState
   Set<Marker> markers = {};
   final filtroController = TextEditingController();
   late Localizacao localizacao;
+  late Mensagem mensagem;
 
   final cepService = CepService();
   final cepController = TextEditingController();
@@ -32,6 +34,7 @@ class _SelecionarLocalizacaoMapaPageState
   @override
   Widget build(BuildContext context) {
     localizacao = Localizacao(context);
+    mensagem = Mensagem(context);
     final arguments = (ModalRoute.of(context)?.settings.arguments ??
         <String, dynamic>{}) as Map;
     LatLng latLngPassadaPorParametro = arguments['latLng'];
@@ -90,7 +93,9 @@ class _SelecionarLocalizacaoMapaPageState
                           IconButton(
                             onPressed: () {
                               _findCep().then((value) {
-                                if (cep != null) {
+                                if ((cep == null) || (cep?.cep == null)) {
+                                  mensagem.mostrarMensagem('CEP não encontrado.');                                
+                                } else {
                                   filtroController.text =
                                       '${cep!.localidade!}, ${cep!.bairro!}, ${cep!.logradouro!}';
                                   filtrarLocalizacaoMapa();
