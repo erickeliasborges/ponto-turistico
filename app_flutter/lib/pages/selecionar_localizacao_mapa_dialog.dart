@@ -70,32 +70,42 @@ class _SelecionarLocalizacaoMapaPageState
           Form(
             key: cepKey,
             child: TextFormField(
+              keyboardType: TextInputType.number,
               controller: cepController,
               decoration: InputDecoration(
                 labelText: 'CEP',
-                hintText: 'Filtre pelo CEP...',
+                hintText: 'Informe o CEP',
                 suffixIcon: loading
                     ? const Padding(
                         padding: EdgeInsets.all(10),
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : IconButton(
-                        onPressed: () {
-                          _findCep().then((value) {
-                            if (cep != null) {
-                              filtroController.text =
-                                  '${cep!.localidade!}, ${cep!.bairro!}, ${cep!.logradouro!}';
-                              filtrarLocalizacaoMapa();
-                            }
-                          });
-                        },
-                        icon: const Icon(Icons.search),
+                    : Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            onPressed: () => cepController.text = '',
+                            icon: const Icon(Icons.clear),
+                          ),
+                          IconButton(
+                            onPressed: () {
+                              _findCep().then((value) {
+                                if (cep != null) {
+                                  filtroController.text =
+                                      '${cep!.localidade!}, ${cep!.bairro!}, ${cep!.logradouro!}';
+                                  filtrarLocalizacaoMapa();
+                                }
+                              });
+                            },
+                            icon: const Icon(Icons.search),
+                          ),
+                        ],
                       ),
               ),
               inputFormatters: [cepFormater],
               validator: (String? value) {
                 if (value == null || value.isEmpty || !cepFormater.isFill()) {
-                  return 'Informe um cep válido!';
+                  return 'Informe um CEP válido.';
                 }
                 return null;
               },
@@ -104,18 +114,26 @@ class _SelecionarLocalizacaoMapaPageState
           TextField(
             controller: filtroController,
             decoration: InputDecoration(
-              labelText: 'Endereço',
-              hintText: 'Filtre por alguma informação do endereço...',
-              suffixIcon: loading
-                  ? const Padding(
-                      padding: EdgeInsets.all(10),
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : IconButton(
-                      onPressed: filtrarLocalizacaoMapa,
-                      icon: const Icon(Icons.search),
-                    ),
-            ),
+                labelText: 'Endereço',
+                hintText: 'Informe o endereço',
+                suffixIcon: loading
+                    ? const Padding(
+                        padding: EdgeInsets.all(10),
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            onPressed: () => filtroController.text = '',
+                            icon: const Icon(Icons.clear),
+                          ),
+                          IconButton(
+                            onPressed: filtrarLocalizacaoMapa,
+                            icon: const Icon(Icons.search),
+                          ),
+                        ],
+                      )),
           ),
           Expanded(
             child: GoogleMap(
@@ -143,7 +161,7 @@ class _SelecionarLocalizacaoMapaPageState
       floatingActionButton: Row(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
-          FloatingActionButton(            
+          FloatingActionButton(
             tooltip: 'Marcar localização atual no mapa.',
             onPressed: () {
               setPosicaoAtual();
@@ -151,7 +169,7 @@ class _SelecionarLocalizacaoMapaPageState
             child: Icon(Icons.my_location),
           ),
           SizedBox(width: 5.0),
-          FloatingActionButton(            
+          FloatingActionButton(
             tooltip: 'Selecionar localização.',
             onPressed: () {
               if (localizacaoSelecionada != null) {
